@@ -1,0 +1,103 @@
+# ==========================================
+# 编译输出 (Compiled Object files)
+# ==========================================
+*.slo
+*.lo
+*.o
+*.obj
+*.gch
+*.pch
+
+# ==========================================
+# 静态库与动态库 (Libraries)
+# ==========================================
+*.so
+*.so.*
+*.a
+*.lib
+*.la
+*.lai
+*.dll
+*.dylib
+*.exe
+*.out
+*.app
+
+# ==========================================
+# 构建目录 (Build Directories)
+# ==========================================
+# 过滤常见的构建输出文件夹
+[Bb]uild/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rm64/
+bin/
+obj/
+
+# CMake 产生的中间文件
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+Makefile
+_deps/
+
+# ==========================================
+# IDE / 编辑器相关 (IDE Settings)
+# ==========================================
+
+# Visual Studio
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.suo
+*.db
+*.opendb
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# CLion / JetBrains
+.idea/
+cmake-build-*/
+
+# Xcode
+*.xccheckout
+*.xcscmblueprint
+*.xcuserstate
+DerivedData/
+*.moved-aside
+*.xcuserstate
+
+# ==========================================
+# 依赖管理与文档 (Package Managers & Docs)
+# ==========================================
+# vcpkg & conan
+vcpkg_installed/
+conanfile.py.el
+conan.lock
+
+# Doxygen 产生的文档
+Doxyfile.bak
+html/
+latex/
+
+# ==========================================
+# 操作系统与临时文件 (OS & Temp files)
+# ==========================================
+.DS_Store
+Thumbs.db
+*.swp
+*~
+*.log
+*.tmp
