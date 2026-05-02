@@ -7,8 +7,6 @@
 #include <iomanip>
 #include <algorithm>
 #include <map>
-#include <bit>
-#include <cstdint>
 using namespace std;
 
 using Row = char[9];
@@ -37,10 +35,6 @@ string manual = "Start. Input: (don't input more than 3 chars) \n"
             "qqq to quit; iii to reset/initialize; rrr to randomize the rubik;\n"
             "? to show manual; l to show/hide face label;";
 
-typedef union {
-    unsigned int i;
-    char c[4];
-} IN;
 
 
 char* prbk_tmp = new char[9];
@@ -360,95 +354,6 @@ void randomize(Row* prbk) {
         }
     }
 }
-
-
-//
-// void turn(Row* prbk, char turn_to) {
-//     Row* prbk_tmp = new Row[6];
-//     for (char i = 0; i < 6; i++) {
-//         for (char j = 0; j < 9; j++) {
-//             prbk_tmp[i][j] = prbk[i][j];
-//         }
-//     }
-//
-//     for (char i = 0; i < 6; i++) {
-//         for (char j = 0; j < 9; j++) {
-//             char k = i + turn_to;
-//             if (k > 5) {
-//                 k -= 6;
-//             }
-//             prbk[i][j] = prbk_tmp[k][j];
-//         }
-//     }
-//
-// }
-//
-//
-//
-//
-//
-// char parse_turnto(char* opr) {
-//     char turn_to;
-//     switch (*opr) {
-//         case 'x':
-//             turn_to = 0;
-//             break;
-//         case 'y':
-//             turn_to = 1;
-//             break;
-//         case 'z':
-//             turn_to = 2;
-//             break;
-//         default:
-//             return 'p'; // invalid operation. p for pass
-//     }
-//     switch (*(opr+1)) {
-//         case 'f':
-//             turn_to += 0;
-//             break;
-//         case 'r':
-//             turn_to += 3;
-//             break;
-//         default:
-//             return 'p';
-//     }
-//     return turn_to;
-// }
-//
-//
-// char operation(Row* prbk, char* opr) {
-//     char turn_to = parse_turnto(opr);
-//
-//     // turn to operation face
-//     turn(&prbk[0], turn_to);
-//
-//     switch (*(opr+2)) {
-//         case '1':
-//             elementary_move(&prbk[0]);
-//             break;
-//         case '2':
-//             elementary_move(&prbk[0]); elementary_move(&prbk[0]);
-//             break;
-//         case '3':
-//             elementary_move(&prbk[0]); elementary_move(&prbk[0]); elementary_move(&prbk[0]);
-//             break;
-//         default:
-//             return 'p';
-//     }
-//
-//     // turn it back
-//     char turn_back = turn_to;
-//     turn(&prbk[0], turn_back);
-//     return 0;
-// }
-//
-//
-// char change_view(Row* prbk, char* view) {
-//     char turn_to = parse_turnto(view);
-//     turn(&prbk[0], turn_to);
-//     return 0;
-// }
-
 
 
 
