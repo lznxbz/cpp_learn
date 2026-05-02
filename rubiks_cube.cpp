@@ -7,6 +7,8 @@
 #include <iomanip>
 #include <algorithm>
 #include <map>
+#include <vector>
+#include <array>
 using namespace std;
 
 using Row = char[9];
@@ -17,7 +19,6 @@ using Row = char[9];
 */
 
 const char rbk_ini[6] = {'1', 'a', 'b', 'c', 'd', '2'};
-const char BG = ' ';
 const map<char,string> color_map {
     {'1', "\033[41m"},
     {'a', "\033[42m"},
@@ -32,11 +33,12 @@ const char map_positions[] = {8, 1, 5, 4, 0, 2, 7, 3, 6};
 string manual = "Start. Input: (don't input more than 3 chars) \n"
             "move/rotate Face Action: mFA; Face - 1, a, b, c, d, 2; Action - l=left, r=right, f=forward, b=backward, i=inverse\n"
             "turn to Face: ttF; Face - 1, a, b, c, d, 2;\n"
-            "qqq to quit; iii to reset/initialize; rrr to randomize the rubik;\n"
-            "? to show manual; l to show/hide face label;";
+            "z to undo; Z to redo; ? to show manual; l to show/hide face label;\n"
+            "qqq to quit; iii to reset/initialize; rrr to randomize the rubik;\n";
 
 
 
+char input[4];
 char* prbk_tmp = new char[9];
 
 
@@ -247,7 +249,7 @@ void elementary_roll_cw(Row* prbk) {
 }
 
 
-void turn_to(Row* prbk, char tt_face) {
+bool turn_to(Row* prbk, char tt_face) {
     switch (tt_face) {
         case '1':
             break;
@@ -268,8 +270,9 @@ void turn_to(Row* prbk, char tt_face) {
             break;
         default:
             cout << "No such face: " << tt_face << endl;
-            break;
+            return false;
     }
+    return true;
 }
 
 
@@ -351,10 +354,78 @@ void randomize(Row* prbk) {
             case 2:
                 elementary_top(prbk);
                 break;
+            default:
+                break;
         }
     }
 }
 
+
+
+vector<array<char,4>> history;
+int history_pointer = 0;
+int undo_counter = 0;
+char undo_out[4];
+bool undo_redo;
+constexpr char match_arr[5] = {'r','f','i','b','l'};
+
+void save_to_history(char* input) {
+    undo_counter = 0;
+    array<char,4> new_array;
+    copy(input, input + 4, new_array.begin()); // auto new_array = to_array(input)
+
+    if (history_pointer == history.size()) {
+        history.push_back(new_array);
+    } else {
+        history.at(history_pointer) = new_array;
+    }
+    history_pointer ++;
+}
+
+
+void show_history() {
+    for (int ii = 0; ii < history_pointer; ii++) {
+        auto i = history.at(ii);
+        for (auto j : i) {
+            cout << j;
+        }
+        cout << endl;
+    }
+}
+
+
+
+void undo() {
+    undo_redo = true;
+    undo_counter ++;
+    history_pointer --;
+
+    auto input4 = history.at(history_pointer);
+    if (input4[1] == 't') {
+        if (input4[2] == 'a' || input4[2] == 'b') {input4[2] += 2;}
+        else if (input4[2] == 'c' || input4[2] == 'd') {input4[2] -= 2;}
+    } else {
+        for (char i = 0; i < 5; i++) {
+            if (match_arr[i] == input4[2]) {
+                input4[2] = match_arr[4 - i];
+                break;
+            }
+        }
+    }
+    copy(input4.begin(), input4.end(), input);
+}
+
+
+
+void redo() {
+    undo_redo = true;
+    undo_counter --;
+
+    auto input4 = history.at(history_pointer);
+    copy(input4.begin(), input4.end(), input);
+
+    history_pointer ++;
+}
 
 
 int main() {
@@ -369,7 +440,9 @@ int main() {
     ini_rbk(&rbk[0]);
 
     cout << manual << endl;
-     char input[4];
+
+    history.reserve(200);
+
 
     bool skip_loop = false;
     // main loop
@@ -390,22 +463,72 @@ int main() {
             skip_loop = true;
         }
 
+
         bool valid_input;
+        undo_redo = false;
+
+        label_main_switch:
         switch (*input) {
             case 't':
                 if (input[1] == 't') {
-                    turn_to(rbk, input[2]);
-                    break;
+                    valid_input = turn_to(rbk, input[2]);
+                    if (valid_input) {
+                        if (! undo_redo) {
+                            save_to_history(input);
+                        }
+                        break;
+                    }
                 }
                 goto label_default;
             case 'm':
                 valid_input = move(rbk, input);
-                if (valid_input) {break;}
+                if (valid_input) {
+                    if (! undo_redo) {
+                    save_to_history(input);
+                    }
+                    break;
+                }
                 goto label_default;
             case 'r':
                 if (memcmp(input, &rrr, 4) ==  0) {
                     randomize(rbk);
                     break;
+                }
+                goto label_default;
+            case 'z':
+                if (history_pointer == 0) {
+                    cout << "Can't undo!" << endl;
+                    break;
+                }
+                undo();
+                goto label_main_switch;
+            case 'Z':
+                if (undo_counter == 0) {
+                    cout << "Can't redo!" << endl;
+                    break;
+                }
+                redo();
+                goto label_main_switch;
+            case 'h':
+                show_history();
+                break;
+            case 'l':
+                show_lable = !show_lable;
+                break;
+            case '?':
+                cout << manual << endl;
+                break;
+            case 'i':
+                if (memcmp(input, &iii, 4) == 0) {
+                    cout << "Initialize/Reset!" << endl;
+                    ini_rbk(rbk);
+                    break;
+                }
+                goto label_default;
+            case 'q':
+                if (memcmp(input, &qqq, 4) == 0) {
+                    cout << "QUIT!" << endl;
+                    return 0;
                 }
                 goto label_default;
             case 'e':
@@ -417,68 +540,11 @@ int main() {
             case 'y':
                 elementary_top(rbk);
                 break;
-            case 'q':
-                if (memcmp(input, &qqq, 4) == 0) {
-                    cout << "QUIT!" << endl;
-                    return 0;
-                }
-                goto label_default;
-            case 'i':
-                if (memcmp(input, &iii, 4) == 0) {
-                    cout << "Initialize/Reset!" << endl;
-                    ini_rbk(rbk);
-                    break;
-                }
-                goto label_default;
-            case '?':
-                cout << manual << endl;
-                break;
-            case 'l':
-                show_lable = !show_lable;
-                break;
             default:
                 label_default:
                 cout << "Invalid input => No action. " << endl;
                 break;
         }
-
-
-
-
-
-        // // change view
-        // if (*input == 'c') {
-        //     change_view(&rbk[0], input+1);
-        //     continue;
-        // }
-        //
-        // // operation
-        // if (*input >= 'x' && *input <= 'z') {
-        //     char status = operation(&rbk[0], input);
-        //     if (status == 'p') {
-        //         cout << "invalid operation. Input again" << endl;
-        //     }
-        //     continue;
-        // }
-        // if (*input == 'e') {
-        //     elementary_move(&rbk[0]);
-        //     continue;
-        // }
-        //
-        // // initialize/reset
-        // if (*input == 'i') {
-        //     cout << "rubik cube initialized. " << endl;
-        //     ini_rbk(&rbk[0]);
-        // }
-        // // show history
-        //
-        //
-        // // qqq to quit program
-        // if (*input == 'q' ) {
-        //     cout << "QUIT" << endl;
-        //     break;
-        // }
-
     }
     return 0;
 }
