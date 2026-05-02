@@ -1,103 +1,25 @@
-# ==========================================
-# 编译输出 (Compiled Object files)
-# ==========================================
-*.slo
-*.lo
-*.o
-*.obj
-*.gch
-*.pch
+# 1. 忽略所有文件和文件夹
+*
 
-# ==========================================
-# 静态库与动态库 (Libraries)
-# ==========================================
-*.so
-*.so.*
-*.a
-*.lib
-*.la
-*.lai
-*.dll
-*.dylib
-*.exe
-*.out
-*.app
+# 2. 允许文件夹结构（如果不允许文件夹，Git 无法进入子目录寻找文件）
+!*/
 
-# ==========================================
-# 构建目录 (Build Directories)
-# ==========================================
-# 过滤常见的构建输出文件夹
-[Bb]uild/
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-[Aa]rm64/
-bin/
-obj/
+# 3. 允许特定的源文件格式
+!.gitignore
+!*.cpp
+!*.h
+!*.hpp
+!*.cc
+!*.c
+!*.s      # 汇编文件
+!*.S      # 大写 S 汇编文件（通常用于带预处理的汇编）
 
-# CMake 产生的中间文件
-CMakeCache.txt
-CMakeFiles/
-CMakeScripts/
-cmake_install.cmake
-install_manifest.txt
-Makefile
-_deps/
+# 4. 允许构建系统配置文件
+!CMakeLists.txt
+!*.cmake
+!Makefile
 
-# ==========================================
-# IDE / 编辑器相关 (IDE Settings)
-# ==========================================
-
-# Visual Studio
-.vs/
-*.sln
-*.vcxproj
-*.vcxproj.filters
-*.vcxproj.user
-*.suo
-*.db
-*.opendb
-
-# VS Code
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-*.code-workspace
-
-# CLion / JetBrains
-.idea/
-cmake-build-*/
-
-# Xcode
-*.xccheckout
-*.xcscmblueprint
-*.xcuserstate
-DerivedData/
-*.moved-aside
-*.xcuserstate
-
-# ==========================================
-# 依赖管理与文档 (Package Managers & Docs)
-# ==========================================
-# vcpkg & conan
-vcpkg_installed/
-conanfile.py.el
-conan.lock
-
-# Doxygen 产生的文档
-Doxyfile.bak
-html/
-latex/
-
-# ==========================================
-# 操作系统与临时文件 (OS & Temp files)
-# ==========================================
-.DS_Store
-Thumbs.db
-*.swp
-*~
-*.log
-*.tmp
+# 5. 可选：允许资源文件或文档
+!*.md
+!*.txt
+!*.json
