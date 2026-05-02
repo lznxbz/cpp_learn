@@ -33,7 +33,7 @@ const char map_positions[] = {8, 1, 5, 4, 0, 2, 7, 3, 6};
 string manual = "Start. Input: (don't input more than 3 chars) \n"
             "move/rotate Face Action: mFA; Face - 1, a, b, c, d, 2; Action - l=left, r=right, f=forward, b=backward, i=inverse\n"
             "turn to Face: ttF; Face - 1, a, b, c, d, 2;\n"
-            "z to undo; Z to redo; ? to show manual; l to show/hide face label;\n"
+            "z to undo; Z to redo; ? to show manual; l to show/hide face label; h to show history; \n"
             "qqq to quit; iii to reset/initialize; rrr to randomize the rubik;\n";
 
 
@@ -456,7 +456,7 @@ int main() {
         print_out(&rbk[0][0], show_lable);
 
         // Read input
-        cout << "Input: ";
+        cout << "Input (? for help): ";
         cin >> setw(4) >> input;
         if (input[3] != 0) {
             cout << "Please input 1-3 characters. " << endl;
