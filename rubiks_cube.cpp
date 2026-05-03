@@ -335,6 +335,25 @@ bool move (Row* prbk, char* input) {
             return false;
     }
 
+    switch (input[1]) {
+        case '1':
+        case '2':
+        case 'a':
+        case 'c':
+            if (input[2] == 'f' || input[2] == 'b') {
+                return false;
+            }
+            break;
+        case 'b':
+        case 'd':
+            if (input[2] == 'l' || input[2] == 'r') {
+                return false;
+            }
+            break;
+        default:
+            return false;
+    }
+
     if (input[1] == 'a' || input[1] == 'c') {rot_n = 4 - rot_n; cout << (int)rot_n << endl;}
     basic_move(prbk, turn_n, fxn, rot_n);
     return true;
