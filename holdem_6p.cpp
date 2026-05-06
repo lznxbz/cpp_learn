@@ -4,6 +4,7 @@
 #include <list>
 #include <stdexcept>
 #include <map>
+#include <functional>
 using namespace std;
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
@@ -21,11 +22,46 @@ void init_card_pile() {
 array<array<int,2>,8> hole_cards;
 array<int,5> community_cards;
 void dealing_cards(const int n_people, const array<int, 7>& known_cards, int n_community_cards) {
+    // Take out from card pile
+    for (int i = 0; i < n_community_cards + 2; i++) {
+        int card_i = known_cards[i];
+        auto remove_counter = card_pile.remove(card_i);
+        if (remove_counter != 1) {
+            cout << remove_counter << " of cards removed!" << endl;
+            throw invalid_argument("Cards out of range, or duplication of cards.");
+        }
+    }
+
+    // Assign to me and community cards
     for (int i = 0; i < n_community_cards; i++) {
         community_cards[i] = known_cards[i + 2];
     }
     hole_cards[0][0] = known_cards[0]; hole_cards[0][1] = known_cards[1];
+    
+    // Take out and assign for the rest players
+    for (int i = 1; i < n_people; i++) {
+        for (int ii = 0; ii < 2; ii++){
+            // assign a random card
+            auto it_card = card_pile.begin();
+            int p_card = rand() % card_pile.size();
+            advance(it_card, p_card);
+            hole_cards[i][ii] = *it_card;
+            card_pile.erase(it_card);
+        }
+    }
+
+    // Show all of 5 community cards
+    for (int i = n_community_cards; i < 5; i++) {
+        auto it_card = card_pile.begin();
+        int p_card = rand() % card_pile.size();
+        advance(it_card, p_card);
+        community_cards[i] = *it_card;
+        card_pile.erase(it_card);
+    }
 }
+
+
+
 
 int get_card_index(const array<char,2>& card_v) {
     int suits_index;
@@ -67,17 +103,17 @@ int get_card_index(const array<char,2>& card_v) {
                 name_index = 14 - 6;
                 break;
             default:
-                throw invalid_argument("card value must be one of 6-9, x, j, k, a");
+                throw invalid_argument("card point must be one of 6-9, x, j, k, a");
         }
     }
     return 4 * name_index + suits_index;
 }
 
 
-array<char,2> get_card_value(const int card_index) {
-    int name_index = card_index / 4;
+array<char,2> get_card_point(const int card_index) {
+    int name_index = card_index / 4; 
     int suit_index = card_index % 4;
-    array<char,2> card_value;
+    array<char,2> card_point;
 
     const map<int,char> suit_map = {
         {0, 'c'},
@@ -85,9 +121,9 @@ array<char,2> get_card_value(const int card_index) {
         {2, 'h'},
         {3, 's'},
     };
-    card_value[1] = suit_map.at(suit_index);
+    card_point[1] = suit_map.at(suit_index);
 
-    const map<int,char> card_value_map = {
+    const map<int,char> card_point_map = {
         {4, 'x'},
         {5, 'j'},
         {6, 'q'},
@@ -95,16 +131,158 @@ array<char,2> get_card_value(const int card_index) {
         {8, 'a'}
     };
     if (name_index < 4) {
-        card_value[0] = '6' + name_index;
+        card_point[0] = '6' + name_index;
     } else {
-        card_value[0] = card_value_map.at(card_index);
+        card_point[0] = card_point_map.at(name_index);
     }
 
-    return card_value;
+    return card_point;
 }
 
+int int_pow(int base, int exponent) {
+    if (exponent > 0) {
+        exponent --;
+        return base * int_pow(base, exponent);
+    } else {
+        return 1;
+    }
+}
+
+int calc_score(int hole0, int hole1) {
+    array<int, 7> full_hands;
+    for (int i = 0; i < 5; i++) full_hands[i] = community_cards[i];
+    full_hands[5] = hole0; full_hands[6] = hole1;
+
+    // transform to the space of occurences
+    array<int,4> suits_counter{};
+    array<int,9> value_counter{};
+    for (auto i : full_hands) {
+        int suit_idx = i % 4;
+        int value_idx = i / 4;
+        suits_counter[suit_idx] ++;
+        value_counter[value_idx] ++;
+    }
+    
+    int score = 0;
+
+    // Four a kind, score = 1e5 + max
+    // Mutual exclusive for all of the rest cases. => Retrun score directly
+    for (int i = 0; i < 9; i++) { // can only exist one four a kind, iteration order doesn't matter
+        if (value_counter[i] == 4) return 100000 + i; // score
+    }
+    
+
+    // Straight, score = 1e3 + max
+    int straight_counter = 0;
+    int straight_max;
+    for (int i = 8; i >= 0; i--) { // high to low
+        if (value_counter[i] > 0) {
+            if (straight_counter == 0) straight_max = i;
+            straight_counter ++;
+            if (straight_counter == 5) score += 1000 + straight_max;
+        } else {
+            straight_counter = 0;
+            if (i < 4) break; // the only straight that < 10 is 9-A, which will be included below
+        }
+    }
+    if (value_counter[8] > 0) { // if Ace exist, then check 9-A straight
+        int i = 0;
+        for (i = 0; i < 4; i++) {
+            if (value_counter[i] == 0) break;
+        } 
+        if (i == 3) score += 1003;
+    }
 
 
+    // (straight) flush: senario which both suits and point should be considered at the same time
+    // Flush, score=1e4+max
+    int flush_suit = 5;
+    for (int i = 0; i < 4; i++) {
+        if (suits_counter[i] >= 5) {
+            flush_suit = i;
+            break;
+        }
+    }
+    if (flush_suit != 5) { // flush exist, find the biggest card
+        int flush_max = 0;
+        for (auto i : full_hands) {
+            if (i % 4 == flush_suit) {
+                int flush_i = i / 4;
+                if (flush_i > flush_max) flush_max = flush_i;
+            }
+        }
+        score += 10000 + flush_max;
+    }
+
+    // straight flush, score = 1e5 * max
+    if (score > 11000) { // both straight and flush exist
+        int n_flush = suits_counter[flush_suit]; // number of flush cards
+        list<int> straight_list;
+        for (auto i : full_hands) {
+            if (i % 4 == flush_suit) straight_list.push_back(i / 4);
+        }
+        straight_list.sort(greater<int>()); // high to low
+        straight_counter = 0;
+
+        auto itr = straight_list.begin();
+        int card_previous = *itr;
+        int card_max = *itr;
+        advance(itr, 1);
+        for (itr; itr != straight_list.end(); ++itr) {
+            if (*itr == card_previous - 1) {
+                straight_counter ++;
+                if (straight_counter == 4) return card_max * 100000; // straigh flush achieved
+            } else {
+                straight_counter = 0;
+                card_max = *itr;
+            }
+            card_previous = *itr;
+        }
+    }
+
+    if (score > 10000) return score; // return flush
+
+    int low_score = 0;
+
+    // Three a kind, low_score = 1e3 + max
+    for (int i = 8; i >= 0; i--) {
+        if (value_counter[i] == 3) low_score = 1000 * (i + 1); // score
+    }
+
+    // Two pairs, low_score = 1e2*max + 1e1*second
+    int n_two_pairs = 0;
+    for (int i = 8; i >= 0; i--) {
+        if (value_counter[i] == 2) {
+            n_two_pairs++;
+            if (n_two_pairs == 1) {
+                low_score += 100 * (i + 1);
+            } else if (n_two_pairs == 2) {
+                low_score += 10 * (i + 1);
+            }
+        }
+    }
+
+    // Full house, 1010 < score < 10000
+    if (low_score >= 1100) { // 3+2
+        return low_score; // return full house
+    }
+
+    if (score > 1000) return score; // return straight
+    // return the rest exclude high card. Decay to 3-digits. 
+    if (low_score > 0) return low_score / 10; 
+    
+    
+    // High card
+    int negative_score = - int_pow(10, 7);
+    int power_counter = 0;
+    for (int i = 0; i < 9; i++) {
+        if (value_counter[i] == 1) {
+            negative_score += i * int_pow(10,power_counter);
+            power_counter ++;
+        }
+    }
+    return negative_score;
+}
 
 
 
@@ -134,15 +312,40 @@ int main(int argc, char* argv[]) {
     int n_community_cards = argc - 4;
 
 
+    array<int,8> rank_counter{};
+    for (int match_i = 0; match_i < 1000; match_i++) { // each match
+        init_card_pile();
+        dealing_cards(n_people, cards_arr, n_community_cards);
+
+        /* 
+        // TEST
+        cout << "community: ";
+        // for (auto i : community_cards) {cout << i << " "; get_card_point(i); cout << endl; }
+        for (auto i : community_cards) cout << get_card_point(i)[0] << get_card_point(i)[1] << " "; cout << endl;
+
+        for (int i = 0; i < n_people; i++) {
+            cout << "player" << i << ": ";
+            // for (auto ii : hole_cards[i]) cout << ii << " "; cout << endl;
+            for (auto ii : hole_cards[i]) cout << get_card_point(ii)[0] << get_card_point(ii)[1] << " ";
+            cout << "Score: " << calc_score(hole_cards[i][0], hole_cards[i][1]);
+            cout << endl;
+        }
+        */
+       
+        // Probability
+        int my_score = calc_score(hole_cards[0][0], hole_cards[0][1]);
+        int my_rank = 0;
+        for (int i = 1; i < n_people; i++) {
+            if (my_score < calc_score(hole_cards[i][0], hole_cards[i][1])) my_rank++;
+        }
+        rank_counter[my_rank] ++;
+    }
+
+    for (int i = 0; i < n_people; i++) cout << rank_counter[i] << " ";
+    cout << endl;
 
 
-    
 
 
-
-
-
-
-    return 0;
 }
 
