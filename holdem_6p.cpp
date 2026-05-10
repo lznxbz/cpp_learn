@@ -7,8 +7,10 @@
 #include <functional>
 #include <random>
 #include <thread>
-#include <ctime>
 #include <format>
+#include <mutex>
+#include <vector>
+#include <cmath>
 using namespace std;
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
@@ -17,6 +19,7 @@ usage: holdem_6p #players hole0 hole1 [community0 ~ community4]
 */
 
 
+// Basic Math
 int int_pow(int base, int exponent) {
     if (exponent > 0) {
         exponent --;
@@ -25,6 +28,27 @@ int int_pow(int base, int exponent) {
         return 1;
     }
 }
+
+double calculateMean(const vector<array<double,8>>& data, int column_index) {
+    if (data.empty()) return 0.0;
+    double sum = 0.0;
+    for (auto i : data) {
+        sum += i[column_index];
+    }
+    return sum / data.size();
+}
+
+double calculateStdev(const std::vector<array<double,8>>& data, int column_index, double mean) {
+    if (data.size() <= 1) return 0.0;
+    double varianceSum = 0.0;
+    for (auto i : data) {
+        varianceSum += pow(i[column_index] - mean, 2); // 每个数据与均值的平方差
+    }
+    return sqrt(varianceSum / data.size());
+}
+
+
+
 
 int get_card_index(const array<char,2>& card_v) {
     int suits_index;
@@ -351,11 +375,17 @@ void Holdem::test_game(mt19937& gen) {
 }
 
 
+
+
+int n_threads = 10;
+int thread_counter = 0;
+vector<array<double,8>> results_collector;
+mutex mtx;
+
 void worker_thread(
     int n_players, 
     int n_community_cards, 
-    int* pknown_cards,
-    double* rank_probabilities
+    int* pknown_cards
 ) {
     // Random number generator for each thread. 
     random_device rd;
@@ -369,9 +399,16 @@ void worker_thread(
     gameHoldem.get_probability(gen);
 
     // Output results
+    mtx.lock();
+    // cout << thread_counter << ": ";
+    thread_counter ++;
     for (int i = 0; i < gameHoldem.n_players; i++) {
-        rank_probabilities[i] += gameHoldem.probability[i];
+        // cout << gameHoldem.probability[i] << " ";
+        // rank_probabilities[i] += gameHoldem.probability[i];
+        results_collector.emplace_back(gameHoldem.probability);
     }
+    // cout << endl;
+    mtx.unlock();
 }
 
 void test_thread (
@@ -388,12 +425,23 @@ void test_thread (
     gameHoldem.n_players = n_players;
     gameHoldem.n_community_cards = n_community_cards;
     gameHoldem.pknown_cards = pknown_cards;
+    mtx.lock();
     gameHoldem.test_game(gen);
+    mtx.unlock();
 }
 
 
 int main(int argc, char* argv[]) {
     array<int,7> cards_arr;
+    bool test_mode = false;
+
+    // Test Mode
+    if (string arg_tmp = argv[1]; arg_tmp == "-T") {
+        argc --;
+        argv ++;
+        test_mode = true;
+    }
+
 
     // Handle invalid input; Read inputs, convert data type
     if (argc < 4 || argc > 9) {
@@ -417,24 +465,30 @@ int main(int argc, char* argv[]) {
     int n_community_cards = argc - 4;
 
 
-    double total_prob[8];
-    thread t1(worker_thread, n_people, n_community_cards, cards_arr.data(), total_prob);
-    thread t2(worker_thread, n_people, n_community_cards, cards_arr.data(), total_prob);
-    thread t3(worker_thread, n_people, n_community_cards, cards_arr.data(), total_prob);
-    thread t4(worker_thread, n_people, n_community_cards, cards_arr.data(), total_prob);
+    // double total_prob[8];
+    vector<thread> threads;
 
-    // thread t1(test_thread, n_people, n_community_cards, cards_arr.data());
-    // thread t2(test_thread, n_people, n_community_cards, cards_arr.data());
-    // thread t3(test_thread, n_people, n_community_cards, cards_arr.data());
-    // thread t4(test_thread, n_people, n_community_cards, cards_arr.data());
-
-    t1.join(); t2.join(); t3.join(); t4.join(); 
-
-    for (int i = 0; i < n_people; i++) {
-        double prob = total_prob[i] / 4.0 * 100.0;
-        cout << format("{:.2f}%; ", prob);
+    if (test_mode) {
+        for (int i = 0; i < n_threads; i++) {
+            threads.emplace_back(test_thread, n_people, n_community_cards, cards_arr.data());
+        }
+        for (auto& i : threads) i.join();
     }
+    
+    else {
+        for (int i = 0; i < n_threads; i++) {
+            threads.emplace_back(worker_thread, n_people, n_community_cards, cards_arr.data());
+        }
+        for (auto& i : threads) i.join();
+
+        for (int i = 0; i < n_people; i++) {
+            // double prob = total_prob[i] / (double)n_threads * 100.0;
+            double prob_mean = calculateMean(results_collector, i);
+            double prob_stdev = calculateStdev(results_collector, i, prob_mean);
+            cout << format("{:.2f}% ± {:.2f}%; ", prob_mean * 100.0, prob_stdev * 100.0);
+        }
     cout << endl;
+    }
 
 }
 
