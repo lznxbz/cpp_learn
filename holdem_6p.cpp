@@ -145,6 +145,12 @@ class Holdem {
         void get_probability(mt19937& gen);
         void test_game(mt19937& gen);
 
+        Holdem(int n_players, int n_community_cards, int* pknown_cards) {
+            init_card_pile();
+            this->n_players = n_players;
+            this->n_community_cards = n_community_cards;
+            this->pknown_cards = pknown_cards;
+        }
 };
 
 
@@ -158,7 +164,7 @@ void Holdem::init_card_pile() {
 void Holdem::dealing_cards(mt19937& gen) {
     // Take out from card pile
     for (int i = 0; i < n_community_cards + 2; i++) {
-        int card_i = pknown_cards[i];
+        int& card_i = pknown_cards[i];
         auto remove_counter = card_pile.remove(card_i);
         if (remove_counter != 1) {
             cout << remove_counter << " of cards removed!" << endl;
@@ -391,11 +397,8 @@ void worker_thread(
     random_device rd;
     mt19937 gen(rd());
     
-    // Create a Holdem game
-    Holdem gameHoldem;
-    gameHoldem.n_players = n_players;
-    gameHoldem.n_community_cards = n_community_cards;
-    gameHoldem.pknown_cards = pknown_cards;
+    // Create n_games Holdem games
+    Holdem gameHoldem(n_players, n_community_cards, pknown_cards);
     gameHoldem.get_probability(gen);
 
     // Output results
@@ -421,10 +424,7 @@ void test_thread (
     mt19937 gen(rd());
     
     // Create a Holdem game
-    Holdem gameHoldem;
-    gameHoldem.n_players = n_players;
-    gameHoldem.n_community_cards = n_community_cards;
-    gameHoldem.pknown_cards = pknown_cards;
+    Holdem gameHoldem(n_players, n_community_cards, pknown_cards);
     mtx.lock();
     gameHoldem.test_game(gen);
     mtx.unlock();
@@ -474,7 +474,7 @@ int main(int argc, char* argv[]) {
         }
         for (auto& i : threads) i.join();
     }
-    
+
     else {
         for (int i = 0; i < n_threads; i++) {
             threads.emplace_back(worker_thread, n_people, n_community_cards, cards_arr.data());
