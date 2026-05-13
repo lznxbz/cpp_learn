@@ -139,14 +139,13 @@ class Holdem {
         int n_players;
         int n_community_cards;
         int* pknown_cards;
-        int calc_score(int hole0, int hole1);
+        long int calc_score(int hole0, int hole1);
         int n_games = 1000;
         array<double,8> probability;
         void get_probability(mt19937& gen);
         void test_game(mt19937& gen);
 
         Holdem(int n_players, int n_community_cards, int* pknown_cards) {
-            init_card_pile();
             this->n_players = n_players;
             this->n_community_cards = n_community_cards;
             this->pknown_cards = pknown_cards;
@@ -167,7 +166,8 @@ void Holdem::dealing_cards(mt19937& gen) {
         int& card_i = pknown_cards[i];
         auto remove_counter = card_pile.remove(card_i);
         if (remove_counter != 1) {
-            cout << remove_counter << " of cards removed!" << endl;
+            for (auto it : card_pile) cout << it << " "; cout << endl;
+            cout << remove_counter << " of cards removed! -- " << card_i << endl;
             throw invalid_argument("Cards out of range, or duplication of cards.");
         }
     }
@@ -205,7 +205,7 @@ void Holdem::dealing_cards(mt19937& gen) {
 
 
 
-int Holdem::calc_score(int hole0, int hole1) {
+long int Holdem::calc_score(int hole0, int hole1) {
     array<int, 7> full_hands;
     for (int i = 0; i < 5; i++) full_hands[i] = community_cards[i];
     full_hands[5] = hole0; full_hands[6] = hole1;
@@ -219,41 +219,74 @@ int Holdem::calc_score(int hole0, int hole1) {
         suits_counter[suit_idx] ++;
         value_counter[value_idx] ++;
     }
-    
-    int score = 0;
 
-    // Four a kind, score = 1e5 + max
-    // Mutual exclusive for all of the rest cases. => Retrun score directly
-    for (int i = 0; i < 9; i++) { // can only exist one four a kind, iteration order doesn't matter
-        if (value_counter[i] == 4) return 100000 + i; // score
+    /* Methodology:
+    ## max++: i.e. 6->1 (not 0), a->9 (not 8)
+    1. four a kind (mutual exclusive) -> return score = (max4)E11 + (max1)E4
+    2. straight -> score = (maxs)E8, straight flag
+    3. flush -> score = (maxf)E10, flush flag
+    4. if straight flag && flush flag -> check straight flush, return score = (maxsf)E12
+        else return score (mutual exclusive with full house)
+    5. three a kind -> score = (max3)E7, three flag
+    6. pair -> score += (max2)E6 + (max2')E5, pair flag
+    7. if three flag && pair flag -> return score *= 1E2 = (max3)E9 + (max2)E8
+
+    Sort single cards at once. Instead of in each conditions.
+    8. if three flag -> return score += (max1)E4 + (max1')E3
+    9. if (pair flag > 1) -> return score += (max2')E5 + (max1)E4
+    10. if (pair flag == 1) -> return score += (max1)E4 + (max1')E3 + (max1'')E2
+    11. return score (max1)E4 + (max1')E3 + (max1'')E2 + (max1''')E1 + (max1'''')E0
+    */
+
+    long int score = 0;
+
+    // 1. Four a kind, score = (max+1)E11
+    // Mutual exclusive for all the rest cases. => Return score directly
+    bool four_flag = false;
+    for (int i = 9; i > 0; i--) {
+        if (value_counter[i-1] == 4) {
+            score = static_cast<long int>(1E11) * i;
+            four_flag = true;
+        }
     }
-    
+    if (four_flag) {
+        for (int i = 9; i > 0; i--) {
+            if (value_counter[i-1] && (value_counter[i-1] != 4)) return score + i * static_cast<long int>(1E4);
+        }
+    }
 
-    // Straight, score = 1e3 + max
+    // 2. Straight, score = (maxs)E8
+    // method: count to 5
+    bool straight_flag = false;
     int straight_counter = 0;
-    int straight_max;
+    int straight_max = 0;
     for (int i = 8; i >= 0; i--) { // high to low
         if (value_counter[i] > 0) {
-            if (straight_counter == 0) straight_max = i;
+            if (straight_counter == 0) straight_max = i + 1;
             straight_counter ++;
-            if (straight_counter == 5) score += 1000 + straight_max;
+            if (straight_counter == 5) {
+                score += static_cast<long>(1E8) * straight_max;
+                straight_flag = true;
+            }
         } else {
             straight_counter = 0;
             if (i < 4) break; // the only straight that < 10 is 9-A, which will be included below
         }
     }
     if (value_counter[8] > 0) { // if Ace exist, then check 9-A straight
-        int i = 0;
+        int i;
         for (i = 0; i < 4; i++) {
             if (value_counter[i] == 0) break;
         } 
-        if (i == 3) score += 1003;
+        if (i == 3) {
+            score = static_cast<long int>(4E8);
+            straight_flag = true;
+        }
     }
 
-
-    // (straight) flush: senario which both suits and point should be considered at the same time
-    // Flush, score=1e4+max
-    int flush_suit = 5;
+     // 3. Flush, score = (maxf)E10
+    bool flush_flag = false;
+    int flush_suit = 5; // which suit has flush, null = 5
     for (int i = 0; i < 4; i++) {
         if (suits_counter[i] >= 5) {
             flush_suit = i;
@@ -268,12 +301,12 @@ int Holdem::calc_score(int hole0, int hole1) {
                 if (flush_i > flush_max) flush_max = flush_i;
             }
         }
-        score += 10000 + flush_max;
+        score = static_cast<long>(1E10) * (flush_max + 1);
+        flush_flag = true;
     }
 
-    // straight flush, score = 1e5 * max
-    if (score > 11000) { // both straight and flush exist
-        int n_flush = suits_counter[flush_suit]; // number of flush cards
+    // 4. straight flush, score = (maxsf)E12
+    if (straight_flag && flush_flag) { // both straight and flush exist
         list<int> straight_list;
         for (auto i : full_hands) {
             if (i % 4 == flush_suit) straight_list.push_back(i / 4);
@@ -288,7 +321,9 @@ int Holdem::calc_score(int hole0, int hole1) {
         for (itr; itr != straight_list.end(); ++itr) {
             if (*itr == card_previous - 1) {
                 straight_counter ++;
-                if (straight_counter == 4) return card_max * 100000; // straigh flush achieved
+                if (straight_counter == 4) { // straight flush achieved
+                    return (card_max + 1) * static_cast<long int>(1E12);
+                }
             } else {
                 straight_counter = 0;
                 card_max = *itr;
@@ -297,48 +332,72 @@ int Holdem::calc_score(int hole0, int hole1) {
         }
     }
 
-    if (score > 10000) return score; // return flush
+    // Return flush or straight (mutual exclusive with full house)
+    if (score > 1) return score;
 
-    int low_score = 0;
-
-    // Three a kind, low_score = 1e3 + max
-    for (int i = 8; i >= 0; i--) {
-        if (value_counter[i] == 3) low_score = 1000 * (i + 1); // score
-    }
-
-    // Two pairs, low_score = 1e2*max + 1e1*second
-    int n_two_pairs = 0;
-    for (int i = 8; i >= 0; i--) {
-        if (value_counter[i] == 2) {
-            n_two_pairs++;
-            if (n_two_pairs == 1) {
-                low_score += 100 * (i + 1);
-            } else if (n_two_pairs == 2) {
-                low_score += 10 * (i + 1);
-            }
+    // 5. Three a kind, score = (max3)E7
+    int three_flag = 0;
+    for (int i = 9; i > 0; i--) {
+        if (value_counter[i - 1] == 3) {
+            score = static_cast<long>(1E7) * i;
+            three_flag = i;
+            break;
         }
     }
 
-    // Full house, 1010 < score < 10000
-    if (low_score >= 1100) { // 3+2
-        return low_score; // return full house
+    // 6. Pairs, score += (max2)E6 + (max2')E5
+    int pairs_counter = 0;
+    int additional_pair = 0;
+    for (int i = 9; i > 0; i--) {
+        if (value_counter[i - 1] >= 2 && i != three_flag) {
+            pairs_counter++;
+            if (pairs_counter == 1) {
+                score += 1000000 * i;
+            } else if (pairs_counter == 2) {
+                score += 100000 * i;
+            } else if (pairs_counter == 3) {
+                additional_pair = i;
+                break;
+            };
+        }
     }
 
-    if (score > 1000) return score; // return straight
-    // return the rest exclude high card. Decay to 3-digits. 
-    if (low_score > 0) return low_score / 10; 
-    
-    
+    // 7. Full house, score = (max3)E9 + (max2)E8
+    if (three_flag && pairs_counter) return score / static_cast<long int>(1E6) * static_cast<long int>(1E8);
+
+
+    // Sort single cards
+    int high_cards[5]; int high_cards_ptr = 0;
+    for (int i = 9; i > 0; i--) {
+        if (value_counter[i - 1] == 1) {
+            high_cards[high_cards_ptr] = i;
+            if (high_cards_ptr < 4) high_cards_ptr ++;
+            else break;
+        }
+    }
+
+
+    // 8. Three a kind, score = (max3)E7 + (max1)E4 + (max1')E3
+    // definitely be 3+1+1, otherwise it is a bigger combination
+    if (three_flag) return score + 10000 * high_cards[0] + 1000 * high_cards[1];
+
+    // 9. Pairs, score = (max2)E6 + (max2')E5 + (max1)E4 + ....
+    switch (pairs_counter) { // 2+2+1 or 2+1+1+1
+        case 2: // 2+2+1
+            return score + 10000 * high_cards[0];
+        case 3: // 2+2+2
+            return score + 10000 * ((high_cards[0] > additional_pair) ? high_cards[0] : additional_pair);
+        case 1: // 2+1+1+1
+            return score + 10000 * high_cards[0] + 1000 * high_cards[1] + 100 * high_cards[2];
+        default:
+            break;
+    }
+
     // High card
-    int negative_score = - int_pow(10, 7);
-    int power_counter = 0;
-    for (int i = 0; i < 9; i++) {
-        if (value_counter[i] == 1) {
-            negative_score += i * int_pow(10,power_counter);
-            power_counter ++;
-        }
+    for (int i = 0; i < 5; i++) {
+        score += int_pow(10, i) * high_cards[4 - i];
     }
-    return negative_score;
+    return score;
 }
 
 
@@ -349,7 +408,7 @@ void Holdem::get_probability (mt19937& gen) {
         dealing_cards(gen);
 
         // Probability
-        int my_score = calc_score(hole_cards[0][0], hole_cards[0][1]);
+        long int my_score = calc_score(hole_cards[0][0], hole_cards[0][1]);
         int my_rank = 0;
         for (int i = 1; i < n_players; i++) {
             if (my_score < calc_score(hole_cards[i][0], hole_cards[i][1])) my_rank++;
