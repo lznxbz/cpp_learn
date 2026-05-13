@@ -388,7 +388,7 @@ long int Holdem::calc_score(int hole0, int hole1) {
         case 3: // 2+2+2
             return score + 10000 * ((high_cards[0] > additional_pair) ? high_cards[0] : additional_pair);
         case 1: // 2+1+1+1
-            return score + 10000 * high_cards[0] + 1000 * high_cards[1] + 100 * high_cards[2];
+            return score / 10 + 10000 * high_cards[0] + 1000 * high_cards[1] + 100 * high_cards[2];
         default:
             break;
     }
