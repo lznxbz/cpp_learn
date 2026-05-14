@@ -278,7 +278,7 @@ long int Holdem::calc_score(int hole0, int hole1) {
         for (i = 0; i < 4; i++) {
             if (value_counter[i] == 0) break;
         } 
-        if (i == 3) {
+        if (i == 4) {
             score = static_cast<long int>(4E8);
             straight_flag = true;
         }

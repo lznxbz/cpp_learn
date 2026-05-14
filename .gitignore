@@ -4,9 +4,8 @@
 # 2. 允许目录结构（为了让 Git 能进入子目录查找文件）
 !*/
 
-# 3. 【新增】明确排除不需要的 IDE 配置文件夹
+# 3. 明确排除不需要的 IDE 配置文件夹
 .idea/
-.vscode/
 build/
 bin/
 obj/
@@ -22,7 +21,7 @@ obj/
 !*.S
 
 # 5. 构建与配置
-!CMakeLists.txt
+!*.txt
 !*.cmake
 !Makefile
 !*.md
