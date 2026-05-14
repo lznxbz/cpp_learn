@@ -25,3 +25,5 @@ obj/
 !*.cmake
 !Makefile
 !*.md
+!*.json
+
