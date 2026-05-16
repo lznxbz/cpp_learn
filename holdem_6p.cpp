@@ -166,7 +166,7 @@ void Holdem::dealing_cards(mt19937& gen) {
         int& card_i = pknown_cards[i];
         auto remove_counter = card_pile.remove(card_i);
         if (remove_counter != 1) {
-            for (auto it : card_pile) cout << it << " "; cout << endl;
+            for (auto it : card_pile) {cout << it << " ";} cout << endl;
             cout << remove_counter << " of cards removed! -- " << card_i << endl;
             throw invalid_argument("Cards out of range, or duplication of cards.");
         }
@@ -318,7 +318,7 @@ long int Holdem::calc_score(int hole0, int hole1) {
         int card_previous = *itr;
         int card_max = *itr;
         advance(itr, 1);
-        for (itr; itr != straight_list.end(); ++itr) {
+        for (; itr != straight_list.end(); ++itr) {
             if (*itr == card_previous - 1) {
                 straight_counter ++;
                 if (straight_counter == 4) { // straight flush achieved
@@ -428,7 +428,7 @@ void Holdem::test_game(mt19937& gen) {
         dealing_cards(gen);
         cout << "community: ";
         // for (auto i : community_cards) {cout << i << " "; get_card_point(i); cout << endl; }
-        for (auto i : community_cards) cout << get_card_point(i)[0] << get_card_point(i)[1] << " "; cout << endl;
+        for (auto i : community_cards) {cout << get_card_point(i)[0] << get_card_point(i)[1] << " ";} cout << endl;
 
         for (int i = 0; i < n_players; i++) {
             cout << "player" << i << ": ";
